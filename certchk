@@ -1,0 +1,30 @@
+#!/usr/bin/env python3
+
+import socket
+import ssl
+import sys
+from datetime import datetime
+
+def load_https_cert(context, hostname):
+    conn = context.wrap_socket(socket.socket(socket.AF_INET),
+                               server_hostname=hostname)
+    conn.connect((hostname, 443))
+    cert = conn.getpeercert()
+    conn.close()
+    return (hostname, cert)
+
+def expiry(host, cert):
+    notafter = datetime.strptime(cert["notAfter"], "%b %d %H:%M:%S %Y %Z")
+    return (host, notafter)
+
+def main(hosts):
+    def snd(pair):
+        return pair[1]
+
+    context = ssl.create_default_context()
+    certinfo = [ expiry(host, cert) for (host, cert) in [ load_https_cert(context, host) for host in hosts ] ]
+    for (host, expires) in sorted(certinfo, key=snd):
+        print("Certificate for %s expires at %s" % (host, expires.strftime("%m/%d/%Y")))
+
+if __name__ == "__main__":
+    main(sys.argv[1:])
